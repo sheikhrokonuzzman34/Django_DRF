@@ -1,42 +1,50 @@
-from django.shortcuts import render
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+from django.http import HttpResponse, JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.parsers import JSONParser
 from .models import StudentData
 from .serializers import StudentSerializer
-from rest_framework.renderers import JSONRenderer
-from django.http import HttpResponse
 
-import io
-from rest_framework.parsers import JSONParser
-from django.views.decorators.csrf import csrf_exempt
+@api_view(['GET', 'POST'])
+def student_list(request):
 
-@csrf_exempt
-def student_data_create(request):
-    if request.method == 'POST':
-        json_data = request.body
-        # Check if JSON data is empty
-        if not json_data:
-            error_response = {'error': 'Empty JSON data'}
-            json_data = JSONRenderer().render(error_response)
-            return HttpResponse(json_data, content_type='application/json')
+    if request.method == 'GET':
+        snippets = StudentData.objects.all()
+        serializer = StudentSerializer(snippets, many=True)
+        return Response(serializer.data)
 
-        stremn = io.BytesIO(json_data)
-        python_data = JSONParser().parse(stremn)
-        serializer = StudentSerializer(data=python_data)
-
+    elif request.method == 'POST':
+        serializer = StudentSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            response_data = {'success': 'Successfully created'}
-            json_data = JSONRenderer().render(response_data)
-            return HttpResponse(json_data, content_type='application/json')
-        else:
-            json_data = JSONRenderer().render(serializer.errors)
-            return HttpResponse(json_data, content_type='application/json')
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+  
+    
+@api_view(['GET', 'PUT', 'DELETE'])
+def student_detail(request, pk):
+ 
+    try:
+        snippet = StudentData.objects.get(pk=pk)
+    except StudentData.DoesNotExist:
+        return Response(status=status.HTTP_404_NOT_FOUND)
 
-def student_details(request, pk=None):
-    if pk is not None:
-        sut = StudentData.objects.get(id=pk)
-    else:
-        sut = StudentData.objects.get(id=2)  # Assuming a default ID if pk is not provided
+    if request.method == 'GET':
+        serializer = StudentSerializer(snippet)
+        return Response(serializer.data)
 
-    serializer = StudentSerializer(sut)
-    jason_data = JSONRenderer().render(serializer.data)
-    return HttpResponse(jason_data, content_type='application/json')
+    elif request.method == 'PUT':
+        serializer = StudentSerializer(snippet, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        snippet.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)    
