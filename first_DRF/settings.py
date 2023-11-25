@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'new_app',
     'product_app',
+    'classbaseviews_app',
 ]
 
 MIDDLEWARE = [
